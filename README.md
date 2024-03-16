@@ -1,41 +1,51 @@
-# MetaExif
-             __  __      _        _____      _  __
-            |  \/  | ___| |_ __ _| ____|_  _(_)/ _|
-            | |\/| |/ _ \ __/ _' |  _| \ \/ / | |_
-            | |  | |  __/ || (_| | |___ >  <| |  _|
-            |_|  |_|\___|\__\__,_|_____/_/\_\_|_|   v1.0
+# MetaSpidey
+            
+        @@@@@@@@@@  @@@@@@@@ @@@@@@@  @@@@@@   @@@@@@ @@@@@@@  @@@ @@@@@@@  @@@@@@@@ @@@ @@@ 
+        @@! @@! @@! @@!        @!!   @@!  @@@ !@@     @@!  @@@ @@! @@!  @@@ @@!      @@! !@@                                                                                                                                                
+        @!! !!@ @!@ @!!!:!     @!!   @!@!@!@!  !@@!!  @!@@!@!  !!@ @!@  !@! @!!!:!    !@!@!                                                                                                                                                 
+        !!:     !!: !!:        !!:   !!:  !!!     !:! !!:      !!: !!:  !!! !!:        !!:                                                                                                                                                  
+         :      :   : :: ::     :     :   : : ::.: :   :       :   :: :  :  : :: ::    .:                                                                                                                                                   
+                                                                                                  v1.0                                                                                                                                      
+                              .:.:. Script encoded by: @pr0ff3 .:.:.
+      .:.:. Description: Brute force directory on URL, download the files and extract metadata .:.:.
 
-              .:.:. Script encoded by: @JRIC2002 .:.:.
-      .:.:. Description: Extract Metadata from an Image  .:.:.
 
-MetaFile es un script para extraer metadatos de una imagen.
+MetaSpidey is a simple bash script that enables brute force on a domain by downloading all specified files from existing directories and conducting a metadata analysis. These metadata are exported into two documents, one .txt and another .html. 
 
-<img src="https://github.com/jric2002/MetaExif/blob/master/.Screenshots/MetaExif-Screenshot(1).jpg" width="100%"/>
+<img src="https://github.com/sPR0FFEs/MetaSpidey/blob/master/.Screenshots/MetaExif-Screenshot(1).jpg" width="100%"/>
 
->> PROCESO DE INSTALACION.
+>> Quick guide.
 
-	1.- Clonar el repositorio "MetaExif".
+ 	!.- Ensure that Exiftool is installed.
+  		* sudo apt install libimage-exiftool-perl
+    		if not https://exiftool.org/install.html
+      
+	1.- Clone repository.
 
-		* git clone https://github.com/jric2002/MetaExif
+		* git clone https://github.com/sPROFFEs/MetaSpidey
 
-	2.- Entrar a la carpeta "MetaExif".
+	2.- Go to directory.
 
-		* cd MetaExif
+		* cd MetaSpidey
 
-	3.- Dale permisos a los archivos "install.sh" y "MetaExif", como:
+	3.- Grant permissions.:
 
-		* chmod +x install.sh
-		* chmod +x MetaExif
+		* chmod +x MetaSpidey.sh
 
-	4.- Luego ejecuta el archivo "install.sh", como:
+	4.- Execute:
 
-		* bash install.sh
-		* ./install.sh
+		* bash MetaSpidey.sh -h
+  		* ./MetaSpidey.sh --help
 
-	5.- Ahora ya podras ejecutar el script "MetaExif", como:
+	5.- Parameters:
+		* Usage: ./MetaSpidey.sh <URL> <output_folder> <file_types> <dictionary> <max_requests>
+                  Arguments:
+ 		  URL               The URL of the website to spider.
+		  OUTPUT_FOLDER     The folder where downloaded files and metadata will be saved.
+		  FILE_TYPES        The file types to download (e.g., jpg,png,pdf).
+		  DICTIONARY        The file containing directory names for brute forcing.
+		  MAX_REQUESTS      Set the maximum number of requests to make. Set to 0 for complete the dictonary
+		  Please clean all comments on your dictonary
 
-		* bash MetaExif
-		* ./MetaExif
-
-NOTA IMPORTANTE : No me hago responsable por el mal uso que le den a este script.
+Use under environments with appropriate permissions.
 
