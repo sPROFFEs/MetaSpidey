@@ -18,7 +18,7 @@ MetaSpidey is a simple bash script that enables brute force on a domain by downl
 
  	!.- Ensure that Exiftool is installed.
   		* sudo apt install libimage-exiftool-perl
-    		if not https://exiftool.org/install.html
+if not https://exiftool.org/install.html
       
 	1.- Clone repository.
 
