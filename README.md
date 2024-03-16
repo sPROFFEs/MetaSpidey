@@ -12,7 +12,7 @@
 
 MetaSpidey is a simple bash script that enables brute force on a domain by downloading all specified files from existing directories and conducting a metadata analysis. These metadata are exported into two documents, one .txt and another .html. 
 
-<img src="https://github.com/sPR0FFEs/MetaSpidey/blob/master/.Screenshots/MetaExif-Screenshot(1).jpg" width="100%"/>
+![imagen](https://github.com/sPROFFEs/MetaSpidey/assets/150958256/27b06a5b-6798-43cc-a47a-0be179dda832)
 
 >> Quick guide.
 
