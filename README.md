@@ -33,7 +33,7 @@ MetaSpidey is a Python script designed for conducting silent or brute-force spid
 		* python3 MetaSpidey.py
 
  # Usage:
-		* usage: pitonv7.py [-h] [-u URL] [-s] [-b] [-d DICTIONARY] [-o OUTPUT] [-g] [-f FROM_FILE] [-od OUTPUT_DIR] [-mo METADATA_OUTPUT]
+		MetaSpidey.py [-h] [-u URL] [-s] [-b] [-d DICTIONARY] [-o OUTPUT] [-g] [-f FROM_FILE] [-od OUTPUT_DIR] [-mo METADATA_OUTPUT]
 
 		Tool for silent/brute spidering, downloading files and extracting metadata from domains
 
