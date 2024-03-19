@@ -5,47 +5,50 @@
         @!! !!@ @!@ @!!!:!     @!!   @!@!@!@!  !@@!!  @!@@!@!  !!@ @!@  !@! @!!!:!    !@!@!                                                                                                                                                 
         !!:     !!: !!:        !!:   !!:  !!!     !:! !!:      !!: !!:  !!! !!:        !!:                                                                                                                                                  
          :      :   : :: ::     :     :   : : ::.: :   :       :   :: :  :  : :: ::    .:                                                                                                                                                   
-                                                                                                  v1.0                                                                                                                                      
+                                                                                                  v2.0                                                                                                                                      
                               .:.:. Script encoded by: @pr0ff3 .:.:.
       .:.:. Description: Brute force directory on URL, download the files and extract metadata .:.:.
 
 
-MetaSpidey is a simple bash script that enables brute force on a domain by downloading all specified files from existing directories and conducting a metadata analysis. These metadata are exported into two documents, one .txt and another .html. 
+MetaSpidey is a Python script designed for conducting silent or brute-force spidering on a specified domain, capturing URLs in the process. Additionally, it facilitates the downloading of all files from URLs listed in a text file and extracting metadata using Exiftool, with the option to export the results in TXT or HTML format.
 
-![imagen](https://github.com/sPROFFEs/MetaSpidey/assets/150958256/27b06a5b-6798-43cc-a47a-0be179dda832)
+![imagen](https://github.com/sPROFFEs/MetaSpidey/assets/150958256/ec1ea12b-09e5-40e8-a513-ffe39b9742e1)
 
->> Quick guide.
+## Quick guide.
 
- 	!.- Ensure that Exiftool is installed.
-  		* sudo apt install libimage-exiftool-perl
-if not https://exiftool.org/install.html
-      
+ 	!.- Ensure that dependencies are installed.
+  		* chmod +x install_dependencies.sh
+		* ./install_dependencies.sh
+		      
 	1.- Clone repository.
 
-		* git clone https://github.com/sPROFFEs/MetaSpidey
+		* git clone https://github.com/sPROFFEs/MetaSpidey/tree/v2.0-Python-Version
 
 	2.- Go to directory.
 
 		* cd MetaSpidey
+  
+	3.- Execute:
 
-	3.- Grant permissions.:
+		* python3 MetaSpidey.py
 
-		* chmod +x MetaSpidey.sh
+ # Usage:
+		* usage: pitonv7.py [-h] [-u URL] [-s] [-b] [-d DICTIONARY] [-o OUTPUT] [-g] [-f FROM_FILE] [-od OUTPUT_DIR] [-mo METADATA_OUTPUT]
 
-	4.- Execute:
+		Tool for silent/brute spidering, downloading files and extracting metadata from domains
 
-		* bash MetaSpidey.sh -h
-  		* ./MetaSpidey.sh --help
+		Options:
+		  -h, --help            show this help message and exit
+		  -u, --url             URL of the website to spider or brute-force (http://example.com)
+		  -s, --spider          Spider the website
+		  -b, --brute           Perform brute-force discovery
+		  -d, --dictionary      Dictionary file for brute-force discovery
+		  -o, --output 	        Output file for discovered URLs
+		  -g, --get             Download files from URLs specified in a text file
+		  -f, --from            Text file containing URLs
+		  -od, --output-dir     Output directory for downloaded files
+ 		  -mo, --metadata-output Output file for metadata
 
-	5.- Parameters:
-		* Usage: ./MetaSpidey.sh <URL> <output_folder> <file_types> <dictionary> <max_requests>
-                  Arguments:
- 		  URL               The URL of the website to spider.
-		  OUTPUT_FOLDER     The folder where downloaded files and metadata will be saved.
-		  FILE_TYPES        The file types to download (e.g., jpg,png,pdf).
-		  DICTIONARY        The file containing directory names for brute forcing.
-		  MAX_REQUESTS      Set the maximum number of requests to make. Set to 0 for complete the dictonary
-		  Please clean all comments on your dictonary
-
-Use under environments with appropriate permissions.
+## Disclaimer:
+The use of this script is solely for educational purposes or within controlled environments under prior agreement. The authors of this script do not condone any illegal or unethical use of the provided software. By using this script, you agree that the authors shall not be held responsible for any misuse or damage caused by the script. Use it at your own risk and discretion.
 
