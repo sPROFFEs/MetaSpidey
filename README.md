@@ -1,18 +1,14 @@
 # MetaSpidey
-            
-        @@@@@@@@@@  @@@@@@@@ @@@@@@@  @@@@@@   @@@@@@ @@@@@@@  @@@ @@@@@@@  @@@@@@@@ @@@ @@@ 
-        @@! @@! @@! @@!        @!!   @@!  @@@ !@@     @@!  @@@ @@! @@!  @@@ @@!      @@! !@@                                                                                                                                                
-        @!! !!@ @!@ @!!!:!     @!!   @!@!@!@!  !@@!!  @!@@!@!  !!@ @!@  !@! @!!!:!    !@!@!                                                                                                                                                 
-        !!:     !!: !!:        !!:   !!:  !!!     !:! !!:      !!: !!:  !!! !!:        !!:                                                                                                                                                  
-         :      :   : :: ::     :     :   : : ::.: :   :       :   :: :  :  : :: ::    .:                                                                                                                                                   
-                                                                                                  v2.0                                                                                                                                      
-                              .:.:. Script encoded by: @pr0ff3 .:.:.
-      .:.:. Description: Brute force directory on URL, download the files and extract metadata .:.:.
 
+<p align="center">
+  <img src="https://github.com/sPROFFEs/MetaSpidey/assets/150958256/85392748-398a-45d7-ac37-607af54422d7">
+</p>
 
 MetaSpidey is a Python script designed for conducting silent or brute-force spidering on a specified domain, capturing URLs in the process. Additionally, it facilitates the downloading of all files from URLs listed in a text file and extracting metadata using Exiftool, with the option to export the results in TXT or HTML format.
 
-![imagen](https://github.com/sPROFFEs/MetaSpidey/assets/150958256/ec1ea12b-09e5-40e8-a513-ffe39b9742e1)
+<p align="center">
+  <img src="https://github.com/sPROFFEs/MetaSpidey/assets/150958256/ec1ea12b-09e5-40e8-a513-ffe39b9742e1">
+</p>
 
 ## Quick guide.
 
