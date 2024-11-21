@@ -31,10 +31,10 @@ git clone https://github.com/sPROFFEs/MetaSpidey
 cd MetaSpidey
 ```
 
-3. Install dependencies:
+3. Install script:
 ```bash
-chmod +x install_dependencies.sh
-./install_dependencies.sh
+chmod +x install_script.sh
+./install_script.sh
 ```
 
 4. Launch the application:
