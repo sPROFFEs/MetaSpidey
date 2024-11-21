@@ -1,6 +1,103 @@
 # MetaSpidey
 
-[Previous sections remain the same until the License section]
+<p align="center">
+  <img src="https://github.com/sPROFFEs/MetaSpidey/assets/150958256/85392748-398a-45d7-ac37-607af54422d7">
+</p>
+
+MetaSpidey is a powerful graphical tool designed for web crawling, file discovery, and metadata extraction. It features a user-friendly interface that simplifies the process of spidering websites, conducting brute-force directory discovery, downloading files, and analyzing metadata using Exiftool.
+
+## Features
+
+- **Website Crawling**: Silent or brute-force spidering with customizable parameters
+- **File Discovery**: Advanced file filtering capabilities
+- **Bulk Downloads**: Download multiple files from discovered URLs
+- **Metadata Analysis**: Extract and analyze metadata from downloaded files using Exiftool
+- **Export Options**: Save results in TXT or HTML format
+- **User-Friendly Interface**: Intuitive GUI with four main tabs:
+  - Crawling (Rastreo)
+  - Brute Force
+  - Downloads
+  - Metadata
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/sPROFFEs/MetaSpidey
+```
+
+2. Navigate to the MetaSpidey directory:
+```bash
+cd MetaSpidey
+```
+
+3. Install dependencies:
+```bash
+chmod +x install_dependencies.sh
+./install_dependencies.sh
+```
+
+4. Launch the application:
+```bash
+python3 MetaSpidey.py
+```
+
+## Usage Guide
+
+### Crawling Tab
+- Enter the target URL in the URL field
+- Set crawling depth using the dropdown menu
+- Configure request delay (in seconds)
+- Apply file filters (e.g., .pdf, .doc, .txt)
+- Click "Iniciar Rastreo" to start crawling
+
+### Brute Force Tab
+- Input the base URL
+- Select a dictionary file for directory/file discovery
+- Monitor progress in the status window
+- Save results when finished
+
+### Downloads Tab
+- Load a file containing URLs
+- Select output directory for downloaded files
+- Start downloading with a single click
+- Monitor download progress
+
+### Metadata Tab
+- Select the directory containing downloaded files
+- Choose output file for metadata results
+- Extract metadata with Exiftool integration
+- View detailed metadata analysis
+
+## Features in Detail
+
+1. **Crawling Options**
+   - Adjustable crawling depth
+   - Customizable request delays
+   - File type filtering
+   - Real-time progress monitoring
+
+2. **Brute Force Capabilities**
+   - Custom dictionary support
+   - Progress tracking
+   - Results export functionality
+
+3. **Download Management**
+   - Bulk file downloading
+   - Progress tracking
+   - Organized output structure
+
+4. **Metadata Analysis**
+   - Comprehensive metadata extraction
+   - Multiple export formats
+   - Detailed file analysis
+
+## Disclaimer
+
+This tool is intended for educational purposes and authorized security testing only. Users must ensure they have permission to test target systems. The authors assume no liability for misuse or damage caused by this software.
+
+# MetaSpidey
+
 
 ## License
 
@@ -25,4 +122,6 @@ You should have received a copy of the GNU General Public License along with thi
 
 For the full license text, see the [LICENSE](LICENSE) file in the repository.
 
-[Rest of the README remains the same]
+## Contributing
+
+Contributions are welcome! Please feel free to submit pull requests or open issues for any bugs or feature requests.
