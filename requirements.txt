@@ -1,5 +1,0 @@
-PyQt6
-beautifulsoup4
-requests
-python-magic
-pyexiftool
