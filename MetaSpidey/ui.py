@@ -105,22 +105,32 @@ class MainWindow(QMainWindow):
         self.depth_frame = DepthFrame()
         settings_layout.addWidget(self.depth_frame)
 
-        # Delay control
-        delay_frame = QFrame()
-        delay_layout = QVBoxLayout(delay_frame)
-        delay_title = QLabel("Retardo entre solicitudes")
-        delay_title.setStyleSheet("font-weight: bold;")
-        delay_layout.addWidget(delay_title)
+        # Delay and Concurrency control
+        concurrency_frame = QFrame()
+        concurrency_layout = QVBoxLayout(concurrency_frame)
+        concurrency_title = QLabel("Concurrencia y Retardo")
+        concurrency_title.setStyleSheet("font-weight: bold;")
+        concurrency_layout.addWidget(concurrency_title)
 
         delay_input_layout = QHBoxLayout()
-        delay_label = QLabel("Segundos:")
+        delay_label = QLabel("Retardo (seg):")
         self.delay_spin = QSpinBox()
-        self.delay_spin.setRange(1, 5)
-        self.delay_spin.setValue(2)
+        self.delay_spin.setRange(0, 10)
+        self.delay_spin.setValue(1)
         delay_input_layout.addWidget(delay_label)
         delay_input_layout.addWidget(self.delay_spin)
-        delay_layout.addLayout(delay_input_layout)
-        settings_layout.addWidget(delay_frame)
+        concurrency_layout.addLayout(delay_input_layout)
+
+        threads_input_layout = QHBoxLayout()
+        threads_label = QLabel("Hilos:")
+        self.crawler_threads_spin = QSpinBox()
+        self.crawler_threads_spin.setRange(1, 100)
+        self.crawler_threads_spin.setValue(5)
+        threads_input_layout.addWidget(threads_label)
+        threads_input_layout.addWidget(self.crawler_threads_spin)
+        concurrency_layout.addLayout(threads_input_layout)
+
+        settings_layout.addWidget(concurrency_frame)
 
         # File filter
         filter_frame = QFrame()
@@ -192,6 +202,28 @@ class MainWindow(QMainWindow):
         dict_layout.addWidget(self.dict_path_input)
         dict_layout.addWidget(dict_button)
         brute_layout.addLayout(dict_layout)
+
+        # Brute force settings
+        brute_settings_layout = QHBoxLayout()
+
+        # Threads
+        threads_label = QLabel("Hilos:")
+        self.brute_threads_spin = QSpinBox()
+        self.brute_threads_spin.setRange(1, 100)
+        self.brute_threads_spin.setValue(10)
+        brute_settings_layout.addWidget(threads_label)
+        brute_settings_layout.addWidget(self.brute_threads_spin)
+
+        # Status codes
+        status_label = QLabel("Códigos de estado:")
+        self.brute_status_input = QLineEdit()
+        self.brute_status_input.setPlaceholderText("Ej: 200,204,301,302,307,403")
+        self.brute_status_input.setText("200,204,301,302,307,403")
+        brute_settings_layout.addWidget(status_label)
+        brute_settings_layout.addWidget(self.brute_status_input)
+
+        brute_layout.addLayout(brute_settings_layout)
+
 
         # URLs encontradas
         urls_group = QGroupBox("URLs Encontradas")
@@ -399,7 +431,8 @@ class MainWindow(QMainWindow):
             url,
             self.depth_frame.get_depth(),
             self.delay_spin.value(),
-            extensions
+            extensions,
+            self.crawler_threads_spin.value()
         )
         self.crawler_thread.progress.connect(self.update_progress)
         self.crawler_thread.finished.connect(self.crawling_finished)
@@ -449,9 +482,17 @@ class MainWindow(QMainWindow):
     def start_brute_force(self):
         url = self.brute_url_input.text().strip()
         dictionary = self.dict_path_input.text().strip()
+        threads = self.brute_threads_spin.value()
+        status_codes_str = self.brute_status_input.text().strip()
 
         if not url or not dictionary:
             self.brute_progress_text.append("Por favor, complete todos los campos")
+            return
+
+        try:
+            status_codes = [int(code.strip()) for code in status_codes_str.split(',') if code.strip()]
+        except ValueError:
+            self.brute_progress_text.append("Códigos de estado inválidos. Use números separados por comas.")
             return
 
         if not url.startswith(('http://', 'https://')):
@@ -464,7 +505,7 @@ class MainWindow(QMainWindow):
         self.brute_stop_button.setEnabled(True)
         self.brute_save_button.setEnabled(False)
 
-        self.brute_force_thread = BruteForceThread(url, dictionary)
+        self.brute_force_thread = BruteForceThread(url, dictionary, threads, status_codes)
         self.brute_force_thread.progress.connect(self.update_brute_progress)
         self.brute_force_thread.url_found.connect(self.add_found_url)
         self.brute_force_thread.status.connect(self.update_brute_status)

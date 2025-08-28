@@ -9,7 +9,6 @@ import mimetypes
 class Crawler:
     """Base crawler class with common functionality"""
     def __init__(self):
-        self.visited_urls = set()
         self.session = requests.Session()
         self.robots_parser = RobotFileParser()
         self.should_stop = False
@@ -57,39 +56,31 @@ class Crawler:
 
 class BruteForcer:
     """Class for handling brute force URL discovery"""
-    def __init__(self, base_url, dictionary_file):
+    def __init__(self, base_url, dictionary_file, threads=10, status_codes=None):
         self.base_url = base_url
         self.dictionary_file = dictionary_file
+        self.threads = threads
+        self.status_codes = status_codes or [200]
         self.session = requests.Session()
         self.should_stop = False
 
-    def discover(self):
-        """Perform brute force discovery of URLs"""
-        discovered_urls = []
+    def check_path(self, path):
+        """Check a single path."""
+        if self.should_stop:
+            return None
+
+        url = urljoin(self.base_url, path)
         try:
-            with open(self.dictionary_file, 'r') as f:
-                for line in f:
-                    if self.should_stop:
-                        break
-                    
-                    path = line.strip()
-                    if not path:
-                        continue
-                        
-                    url = urljoin(self.base_url, path)
-                    try:
-                        response = self.session.head(url, allow_redirects=True, timeout=5)
-                        if response.status_code == 200:
-                            discovered_urls.append(url)
-                    except:
-                        continue
-                    
-                    time.sleep(0.1)  # Be nice to the server
-                    
-        except Exception as e:
-            print(f"Error in brute force discovery: {e}")
-            
-        return discovered_urls
+            response = self.session.head(url, allow_redirects=True, timeout=5)
+            if response.status_code in self.status_codes:
+                return url, response.status_code
+        except requests.RequestException:
+            pass  # Ignore connection errors, timeouts, etc.
+        return None
+
+    def stop(self):
+        """Signal the brute force process to stop."""
+        self.should_stop = True
 
 class FileDownloader:
     """Class for handling file downloads"""
