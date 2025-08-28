@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QTextEdit,
     QProgressBar, QComboBox, QSpinBox, QFileDialog,
-    QTabWidget, QFrame, QGroupBox  
+    QTabWidget, QFrame, QGroupBox, QCheckBox
 )
 from PyQt6.QtCore import Qt
 from threads import CrawlerThread, BruteForceThread, DownloadThread, DownloadWordlistThread
