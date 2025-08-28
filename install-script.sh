@@ -95,11 +95,6 @@ pip install \
     PyPDF2 \
     PyQt6 \
     urllib3 \
-    mimetypes \
-    datetime \
-    hashlib \
-    zipfile \
-    struct \
     tqdm \
     colorama
 

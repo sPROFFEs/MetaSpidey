@@ -182,11 +182,11 @@ class MainWindow(QMainWindow):
         desc.setWordWrap(True)
         brute_layout.addWidget(desc)
 
-        # URL input
+        # Fuzzing Target input
         url_layout = QHBoxLayout()
-        url_label = QLabel("URL Base:")
+        url_label = QLabel("Fuzzing Target (use FUZZ):")
         self.brute_url_input = QLineEdit()
-        self.brute_url_input.setPlaceholderText("https://ejemplo.com")
+        self.brute_url_input.setPlaceholderText("https://example.com/FUZZ or https://FUZZ.example.com")
         url_layout.addWidget(url_label)
         url_layout.addWidget(self.brute_url_input)
         brute_layout.addLayout(url_layout)
@@ -480,13 +480,17 @@ class MainWindow(QMainWindow):
 
     # Brute force methods
     def start_brute_force(self):
-        url = self.brute_url_input.text().strip()
+        fuzz_template = self.brute_url_input.text().strip()
         dictionary = self.dict_path_input.text().strip()
         threads = self.brute_threads_spin.value()
         status_codes_str = self.brute_status_input.text().strip()
 
-        if not url or not dictionary:
+        if not fuzz_template or not dictionary:
             self.brute_progress_text.append("Por favor, complete todos los campos")
+            return
+
+        if "FUZZ" not in fuzz_template:
+            self.brute_progress_text.append("El objetivo de fuzzing debe contener la palabra clave 'FUZZ'")
             return
 
         try:
@@ -495,9 +499,6 @@ class MainWindow(QMainWindow):
             self.brute_progress_text.append("Códigos de estado inválidos. Use números separados por comas.")
             return
 
-        if not url.startswith(('http://', 'https://')):
-            url = 'https://' + url
-
         self.brute_progress_text.clear()
         self.urls_list.clear()
         self.brute_progress_bar.setValue(0)
@@ -505,7 +506,7 @@ class MainWindow(QMainWindow):
         self.brute_stop_button.setEnabled(True)
         self.brute_save_button.setEnabled(False)
 
-        self.brute_force_thread = BruteForceThread(url, dictionary, threads, status_codes)
+        self.brute_force_thread = BruteForceThread(fuzz_template, dictionary, threads, status_codes)
         self.brute_force_thread.progress.connect(self.update_brute_progress)
         self.brute_force_thread.url_found.connect(self.add_found_url)
         self.brute_force_thread.status.connect(self.update_brute_status)

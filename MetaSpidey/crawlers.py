@@ -56,20 +56,23 @@ class Crawler:
 
 class BruteForcer:
     """Class for handling brute force URL discovery"""
-    def __init__(self, base_url, dictionary_file, threads=10, status_codes=None):
-        self.base_url = base_url
+    def __init__(self, fuzz_template, dictionary_file, threads=10, status_codes=None):
+        self.fuzz_template = fuzz_template
         self.dictionary_file = dictionary_file
         self.threads = threads
         self.status_codes = status_codes or [200]
         self.session = requests.Session()
         self.should_stop = False
 
-    def check_path(self, path):
+    def check_path(self, payload):
         """Check a single path."""
         if self.should_stop:
             return None
 
-        url = urljoin(self.base_url, path)
+        url = self.fuzz_template.replace("FUZZ", payload)
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
+
         try:
             response = self.session.head(url, allow_redirects=True, timeout=5)
             if response.status_code in self.status_codes:

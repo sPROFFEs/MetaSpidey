@@ -73,9 +73,9 @@ class BruteForceThread(QThread):
     status = pyqtSignal(str)
     finished = pyqtSignal(list)
 
-    def __init__(self, url, dictionary_file, threads, status_codes):
+    def __init__(self, fuzz_template, dictionary_file, threads, status_codes):
         super().__init__()
-        self.brute_forcer = BruteForcer(url, dictionary_file, threads, status_codes)
+        self.brute_forcer = BruteForcer(fuzz_template, dictionary_file, threads, status_codes)
         self.total_lines = 0
         try:
             with open(dictionary_file, 'r') as f:
