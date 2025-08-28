@@ -19,30 +19,36 @@ MetaSpidey is a powerful graphical tool designed for web crawling, file discover
   - Downloads
   - Metadata
 
-## Installation
+## Getting Started
 
-1. Clone the repository:
+Getting started with MetaSpidey is now handled by a unified, cross-platform launcher.
+
+### 1. Clone the Repository
+
+First, clone the repository to your local machine:
 ```bash
 git clone https://github.com/sPROFFEs/MetaSpidey
-```
-
-2. Navigate to the MetaSpidey directory:
-```bash
 cd MetaSpidey
 ```
 
-3. Install script:
+### 2. Install Dependencies
+
+Run the `install` command using the `launch.py` script. This will download and set up all necessary Python packages and external tools like `ffuf`.
 ```bash
-chmod +x install_script.sh
-./install_script.sh
+python3 launch.py install
+```
+The script will also check for `exiftool` and guide you if it's not installed on your system.
+
+### 3. Run MetaSpidey
+
+Once the installation is complete, you can run the application with the `run` command:
+```bash
+python3 launch.py run
 ```
 
-4. Launch the application:
-```bash
-python3 MetaSpidey.py
-```
+That's it! The application will start, and you can begin using its features.
 
-## Usage Guide
+## Features Guide
 
 ### Crawling Tab
 - Enter the target URL in the URL field
