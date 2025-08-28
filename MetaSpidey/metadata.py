@@ -236,7 +236,7 @@ class MetadataExtractor:
         try:
             # Obtener metadatos básicos primero
             metadata = self.get_basic_metadata(filepath)
-            
+
             # Determinar el tipo de archivo
             mime_type = self.mime.from_file(filepath)
             extension = os.path.splitext(filepath)[1].lower()

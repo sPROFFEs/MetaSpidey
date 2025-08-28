@@ -71,11 +71,11 @@ class BruteForcer:
                 for line in f:
                     if self.should_stop:
                         break
-                    
+
                     path = line.strip()
                     if not path:
                         continue
-                        
+
                     url = urljoin(self.base_url, path)
                     try:
                         response = self.session.head(url, allow_redirects=True, timeout=5)
@@ -83,12 +83,12 @@ class BruteForcer:
                             discovered_urls.append(url)
                     except:
                         continue
-                    
+
                     time.sleep(0.1)  # Be nice to the server
-                    
+
         except Exception as e:
             print(f"Error in brute force discovery: {e}")
-            
+
         return discovered_urls
 
 class FileDownloader:

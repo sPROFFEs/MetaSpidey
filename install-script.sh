@@ -120,11 +120,11 @@ chmod +x MetaSpidey.py
 chown -R $SUDO_USER:$SUDO_USER .
 
 print_status "Installation completed successfully!"
-echo 
+echo
 print_warning "To use MetaSpidey:"
 echo "1. Activate the virtual environment: source venv/bin/activate"
 echo "2. Run the program: python3 MetaSpidey.py"
-echo 
+echo
 print_warning "Note: Some packages like 'hashlib', 'mimetypes', 'datetime', 'struct', and 'os' are part of Python's standard library and don't need separate installation."
 print_warning "Make sure your system has Qt6 properly configured for the GUI to work."
 
@@ -136,4 +136,3 @@ if [ $? -eq 0 ]; then
 else
     print_warning "Qt6 installation might need manual configuration"
 fi
-

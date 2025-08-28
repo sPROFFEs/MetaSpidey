@@ -76,18 +76,18 @@ class BruteForceThread(QThread):
                 for line in f:
                     if self.brute_forcer.should_stop:
                         break
-                    
+
                     self.processed_lines += 1
                     path = line.strip()
                     if not path:
                         continue
-                    
+
                     url = urljoin(self.brute_forcer.base_url, path)
                     try:
                         # Emitir el progreso actual
                         progress_percent = (self.processed_lines / self.total_lines) * 100
                         self.status.emit(f"Progreso: {progress_percent:.1f}% ({self.processed_lines}/{self.total_lines})")
-                        
+
                         response = self.brute_forcer.session.head(url, allow_redirects=True, timeout=5)
                         if response.status_code == 200:
                             discovered_urls.append(url)
@@ -95,11 +95,11 @@ class BruteForceThread(QThread):
                             self.url_found.emit(f"[+] URL encontrada: {url} (Código: {response.status_code})")
                     except Exception as e:
                         self.progress.emit(f"Error al probar {url}: {str(e)}")
-                    
+
                     time.sleep(0.1)  # Ser amable con el servidor
-            
+
             self.finished.emit(discovered_urls)
-            
+
         except Exception as e:
             self.progress.emit(f"Error en fuerza bruta: {str(e)}")
             self.finished.emit([])
@@ -129,3 +129,70 @@ class DownloadThread(QThread):
 
     def stop(self):
         self.downloader.should_stop = True
+
+import os
+import zipfile
+import requests
+import shutil
+
+class DownloadWordlistThread(QThread):
+    progress = pyqtSignal(str)
+    finished = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.seclists_url = "https://github.com/danielmiessler/SecLists/archive/master.zip"
+        self.output_dir = "wordlists"
+        self.zip_path = os.path.join(self.output_dir, "seclists.zip")
+        self.final_path = os.path.join(self.output_dir, "seclists")
+
+    def run(self):
+        try:
+            if os.path.exists(self.final_path):
+                self.progress.emit("SecLists ya parece estar instalado.")
+                self.finished.emit()
+                return
+
+            self.progress.emit("Creando directorio de wordlists...")
+            os.makedirs(self.output_dir, exist_ok=True)
+
+            self.progress.emit(f"Descargando SecLists desde {self.seclists_url}...")
+            response = requests.get(self.seclists_url, stream=True)
+            response.raise_for_status()
+
+            total_size = int(response.headers.get('content-length', 0))
+            downloaded_size = 0
+
+            with open(self.zip_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+                        if total_size > 0:
+                            percent = (downloaded_size / total_size) * 100
+                            self.progress.emit(f"Descargando... {percent:.1f}%")
+
+            self.progress.emit("Descarga completa. Extrayendo archivos...")
+            with zipfile.ZipFile(self.zip_path, 'r') as zip_ref:
+                temp_extract_dir = os.path.join(self.output_dir, "_temp_extract")
+                zip_ref.extractall(temp_extract_dir)
+
+            extracted_folder = os.path.join(temp_extract_dir, os.listdir(temp_extract_dir)[0])
+
+            self.progress.emit("Organizando archivos...")
+            shutil.move(extracted_folder, self.final_path)
+
+            self.progress.emit("Extracción completa. Limpiando...")
+            shutil.rmtree(temp_extract_dir)
+            os.remove(self.zip_path)
+
+            self.progress.emit(f"SecLists ha sido instalado en: {self.final_path}")
+            self.finished.emit()
+
+        except Exception as e:
+            self.progress.emit(f"Error al descargar SecLists: {str(e)}")
+            if os.path.exists(self.zip_path):
+                os.remove(self.zip_path)
+            if 'temp_extract_dir' in locals() and os.path.exists(temp_extract_dir):
+                shutil.rmtree(temp_extract_dir)
+            self.finished.emit()

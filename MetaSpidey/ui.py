@@ -4,14 +4,16 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QTextEdit,
     QProgressBar, QComboBox, QSpinBox, QFileDialog,
-    QTabWidget, QFrame, QGroupBox  
+    QTabWidget, QFrame, QGroupBox
 )
-from PyQt6.QtCore import Qt
-from threads import CrawlerThread, BruteForceThread, DownloadThread
+from PyQt6.QtCore import Qt, pyqtSignal
+from threads import CrawlerThread, BruteForceThread, DownloadThread, DownloadWordlistThread
 from metadata import MetadataExtractor
 
 class DepthFrame(QFrame):
     """Custom frame for depth selection with explanations"""
+    selectionChanged = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout(self)
@@ -51,6 +53,7 @@ class DepthFrame(QFrame):
 
     def update_description(self, selected_level):
         self.detail_label.setText(self.depth_levels[selected_level])
+        self.selectionChanged.emit()
 
     def get_depth(self):
         return int(self.depth_combo.currentText()[0])
@@ -103,6 +106,7 @@ class MainWindow(QMainWindow):
         # Settings
         settings_layout = QHBoxLayout()
         self.depth_frame = DepthFrame()
+        self.depth_frame.selectionChanged.connect(self.force_repaint)
         settings_layout.addWidget(self.depth_frame)
 
         # Delay control
@@ -243,6 +247,11 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(self.brute_stop_button)
         button_layout.addWidget(self.brute_save_button)
         brute_layout.addLayout(button_layout)
+
+        self.download_wordlist_button = QPushButton("Descargar Wordlists (SecLists)")
+        self.download_wordlist_button.setToolTip("Descarga la colección de wordlists de SecLists (~400MB).")
+        self.download_wordlist_button.clicked.connect(self.start_wordlist_download)
+        brute_layout.addWidget(self.download_wordlist_button)
 
         self.tabs.addTab(brute_tab, "Fuerza Bruta")
 
@@ -415,6 +424,10 @@ class MainWindow(QMainWindow):
     def update_progress(self, message):
         self.progress_text.append(message)
 
+    def force_repaint(self):
+        """Force the window to repaint to fix rendering glitches."""
+        self.repaint()
+
     def crawling_finished(self, results):
         self.results = results
         self.progress_bar.setRange(0, 100)
@@ -532,6 +545,18 @@ class MainWindow(QMainWindow):
                 self.brute_progress_text.append(f"Resultados guardados en {file_name}")
             except Exception as e:
                 self.brute_progress_text.append(f"Error al guardar resultados: {str(e)}")
+
+    def start_wordlist_download(self):
+        self.download_wordlist_button.setEnabled(False)
+        self.brute_progress_text.append("Iniciando descarga de SecLists...")
+        self.wordlist_download_thread = DownloadWordlistThread()
+        self.wordlist_download_thread.progress.connect(self.update_brute_progress)
+        self.wordlist_download_thread.finished.connect(self.wordlist_download_finished)
+        self.wordlist_download_thread.start()
+
+    def wordlist_download_finished(self):
+        self.download_wordlist_button.setEnabled(True)
+        self.brute_progress_text.append("Proceso de descarga de wordlist finalizado.")
 
     # Download methods
     def start_download(self):
