@@ -231,12 +231,17 @@ class MetadataExtractor:
             return 'CR (Mac)'
         return 'No line endings'
 
-    def _extract_metadata_native(self, filepath, metadata):
-        """Extract metadata from a file based on its type using native Python libraries."""
+    def extract_metadata(self, filepath):
+        """Extract metadata from a file based on its type"""
         try:
+            # Obtener metadatos básicos primero
+            metadata = self.get_basic_metadata(filepath)
+
+            # Determinar el tipo de archivo
             mime_type = self.mime.from_file(filepath)
             extension = os.path.splitext(filepath)[1].lower()
             
+            # Extraer metadatos específicos según el tipo de archivo
             if mime_type.startswith('image/'):
                 metadata.update(self.get_image_metadata(filepath))
             elif mime_type.startswith('text/'):
@@ -250,38 +255,5 @@ class MetadataExtractor:
             
             return metadata
         except Exception as e:
-            print(f"Error extracting native metadata from {filepath}: {str(e)}")
-            return metadata # Return what we have so far
-
-    def extract_metadata(self, filepath):
-        """Extract metadata from a file using exiftool, with a native fallback."""
-        try:
-            # Start with basic metadata
-            metadata = self.get_basic_metadata(filepath)
-
-            # Use exiftool for deep metadata extraction
-            command = ["exiftool", "-j", "-G", filepath]
-            result = subprocess.run(command, capture_output=True, text=True, check=True, encoding='utf-8')
-
-            exiftool_data = json.loads(result.stdout)[0]
-
-            for key, value in exiftool_data.items():
-                clean_key = f"Exiftool_{key.replace(':', '_')}"
-                if isinstance(value, (str, int, float, bool)):
-                    metadata[clean_key] = value
-                else:
-                    metadata[clean_key] = str(value)
-
-            return metadata
-        except FileNotFoundError:
-            print("Exiftool not found. Falling back to native Python extraction.")
-            # Fallback to the original method
-            return self._extract_metadata_native(filepath, metadata)
-        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-            print(f"Exiftool failed for {filepath}: {e}. Falling back to native extraction.")
-            # Fallback to the original method
-            return self._extract_metadata_native(filepath, metadata)
-        except Exception as e:
-            print(f"An unexpected error occurred with {filepath}: {str(e)}")
-            # Fallback to the original method
-            return self._extract_metadata_native(filepath, metadata)
+            print(f"Error extracting metadata from {filepath}: {str(e)}")
+            return {}

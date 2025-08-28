@@ -1,7 +1,6 @@
 import time
 import requests
 import os
-import subprocess
 from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 from bs4 import BeautifulSoup
@@ -10,6 +9,7 @@ import mimetypes
 class Crawler:
     """Base crawler class with common functionality"""
     def __init__(self):
+        self.visited_urls = set()
         self.session = requests.Session()
         self.robots_parser = RobotFileParser()
         self.should_stop = False
@@ -55,62 +55,41 @@ class Crawler:
             print(f"Error getting links from {url}: {e}")
             return []
 
-class FfufRunner:
-    """Class for building and managing an ffuf process."""
-    def __init__(self, options):
-        self.options = options
-        self.process = None
+class BruteForcer:
+    """Class for handling brute force URL discovery"""
+    def __init__(self, base_url, dictionary_file):
+        self.base_url = base_url
+        self.dictionary_file = dictionary_file
+        self.session = requests.Session()
+        self.should_stop = False
 
-    def _build_command(self):
-        """Build the ffuf command from the options dictionary."""
-        command = ["./ffuf"]
+    def discover(self):
+        """Perform brute force discovery of URLs"""
+        discovered_urls = []
+        try:
+            with open(self.dictionary_file, 'r') as f:
+                for line in f:
+                    if self.should_stop:
+                        break
 
-        # URL and wordlist are mandatory
-        command.extend(["-u", self.options['fuzz_template']])
-        command.extend(["-w", self.options['dictionary']])
+                    path = line.strip()
+                    if not path:
+                        continue
 
-        # Add threads
-        command.extend(["-t", str(self.options['threads'])])
+                    url = urljoin(self.base_url, path)
+                    try:
+                        response = self.session.head(url, allow_redirects=True, timeout=5)
+                        if response.status_code == 200:
+                            discovered_urls.append(url)
+                    except:
+                        continue
 
-        # Add status codes
-        if self.options.get('status_codes'):
-            mc = ",".join(map(str, self.options['status_codes']))
-            command.extend(["-mc", mc])
+                    time.sleep(0.1)  # Be nice to the server
 
-        # Add other boolean flags from UI (will be implemented later)
-        if self.options.get('recursion'):
-            command.append("-recursion")
+        except Exception as e:
+            print(f"Error in brute force discovery: {e}")
 
-        # Add flags with values (will be implemented later)
-        if self.options.get('recursion_depth'):
-            command.extend(["-recursion-depth", str(self.options['recursion_depth'])])
-
-        # Always use JSON output for parsing
-        command.extend(["-o", "/dev/stdout", "-of", "json"])
-
-        return command
-
-    def run(self):
-        """Runs the ffuf command and returns the process."""
-        command = self._build_command()
-        # Use Popen to run the command as a non-blocking subprocess
-        self.process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding='utf-8'
-        )
-        return self.process
-
-    def stop(self):
-        """Stops the ffuf process."""
-        if self.process and self.process.poll() is None:
-            self.process.terminate()
-            try:
-                self.process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
+        return discovered_urls
 
 class FileDownloader:
     """Class for handling file downloads"""

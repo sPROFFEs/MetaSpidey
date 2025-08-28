@@ -4,14 +4,16 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QTextEdit,
     QProgressBar, QComboBox, QSpinBox, QFileDialog,
-    QTabWidget, QFrame, QGroupBox, QCheckBox
+    QTabWidget, QFrame, QGroupBox
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from threads import CrawlerThread, BruteForceThread, DownloadThread, DownloadWordlistThread
 from metadata import MetadataExtractor
 
 class DepthFrame(QFrame):
     """Custom frame for depth selection with explanations"""
+    selectionChanged = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         layout = QVBoxLayout(self)
@@ -51,6 +53,7 @@ class DepthFrame(QFrame):
 
     def update_description(self, selected_level):
         self.detail_label.setText(self.depth_levels[selected_level])
+        self.selectionChanged.emit()
 
     def get_depth(self):
         return int(self.depth_combo.currentText()[0])
@@ -103,34 +106,25 @@ class MainWindow(QMainWindow):
         # Settings
         settings_layout = QHBoxLayout()
         self.depth_frame = DepthFrame()
+        self.depth_frame.selectionChanged.connect(self.force_repaint)
         settings_layout.addWidget(self.depth_frame)
 
-        # Delay and Concurrency control
-        concurrency_frame = QFrame()
-        concurrency_layout = QVBoxLayout(concurrency_frame)
-        concurrency_title = QLabel("Concurrencia y Retardo")
-        concurrency_title.setStyleSheet("font-weight: bold;")
-        concurrency_layout.addWidget(concurrency_title)
+        # Delay control
+        delay_frame = QFrame()
+        delay_layout = QVBoxLayout(delay_frame)
+        delay_title = QLabel("Retardo entre solicitudes")
+        delay_title.setStyleSheet("font-weight: bold;")
+        delay_layout.addWidget(delay_title)
 
         delay_input_layout = QHBoxLayout()
-        delay_label = QLabel("Retardo (seg):")
+        delay_label = QLabel("Segundos:")
         self.delay_spin = QSpinBox()
-        self.delay_spin.setRange(0, 10)
-        self.delay_spin.setValue(1)
+        self.delay_spin.setRange(1, 5)
+        self.delay_spin.setValue(2)
         delay_input_layout.addWidget(delay_label)
         delay_input_layout.addWidget(self.delay_spin)
-        concurrency_layout.addLayout(delay_input_layout)
-
-        threads_input_layout = QHBoxLayout()
-        threads_label = QLabel("Hilos:")
-        self.crawler_threads_spin = QSpinBox()
-        self.crawler_threads_spin.setRange(1, 100)
-        self.crawler_threads_spin.setValue(5)
-        threads_input_layout.addWidget(threads_label)
-        threads_input_layout.addWidget(self.crawler_threads_spin)
-        concurrency_layout.addLayout(threads_input_layout)
-
-        settings_layout.addWidget(concurrency_frame)
+        delay_layout.addLayout(delay_input_layout)
+        settings_layout.addWidget(delay_frame)
 
         # File filter
         filter_frame = QFrame()
@@ -182,11 +176,11 @@ class MainWindow(QMainWindow):
         desc.setWordWrap(True)
         brute_layout.addWidget(desc)
 
-        # Fuzzing Target input
+        # URL input
         url_layout = QHBoxLayout()
-        url_label = QLabel("Fuzzing Target (use FUZZ):")
+        url_label = QLabel("URL Base:")
         self.brute_url_input = QLineEdit()
-        self.brute_url_input.setPlaceholderText("https://example.com/FUZZ or https://FUZZ.example.com")
+        self.brute_url_input.setPlaceholderText("https://ejemplo.com")
         url_layout.addWidget(url_label)
         url_layout.addWidget(self.brute_url_input)
         brute_layout.addLayout(url_layout)
@@ -202,78 +196,6 @@ class MainWindow(QMainWindow):
         dict_layout.addWidget(self.dict_path_input)
         dict_layout.addWidget(dict_button)
         brute_layout.addLayout(dict_layout)
-
-        # --- FFUF Settings Group ---
-        ffuf_settings_group = QGroupBox("Configuración de FFUF")
-        ffuf_settings_layout = QVBoxLayout()
-
-        # Threads and Status Codes
-        top_settings_layout = QHBoxLayout()
-
-        # Threads
-        threads_label = QLabel("Hilos:")
-        self.brute_threads_spin = QSpinBox()
-        self.brute_threads_spin.setRange(1, 200)
-        self.brute_threads_spin.setValue(40)
-        top_settings_layout.addWidget(threads_label)
-        top_settings_layout.addWidget(self.brute_threads_spin)
-
-        # Status Codes Checkboxes
-        self.status_codes_group = QGroupBox("Códigos de Estado (-mc)")
-        status_codes_layout = QHBoxLayout()
-        self.status_code_boxes = {
-            '200': QCheckBox("200"),
-            '204': QCheckBox("204"),
-            '301': QCheckBox("301"),
-            '302': QCheckBox("302"),
-            '307': QCheckBox("307"),
-            '401': QCheckBox("401"),
-            '403': QCheckBox("403"),
-            '500': QCheckBox("500"),
-        }
-        # Set default checks
-        self.status_code_boxes['200'].setChecked(True)
-        self.status_code_boxes['204'].setChecked(True)
-        self.status_code_boxes['301'].setChecked(True)
-        self.status_code_boxes['302'].setChecked(True)
-        self.status_code_boxes['307'].setChecked(True)
-
-        for code, box in self.status_code_boxes.items():
-            status_codes_layout.addWidget(box)
-        self.status_codes_group.setLayout(status_codes_layout)
-        top_settings_layout.addWidget(self.status_codes_group)
-        ffuf_settings_layout.addLayout(top_settings_layout)
-
-        # Other FFUF Options
-        ffuf_options_group = QGroupBox("Otras Opciones de FFUF")
-        ffuf_options_layout = QHBoxLayout()
-
-        # Recursion
-        self.recursion_check = QCheckBox("-recursion")
-        self.recursion_check.setToolTip("Activa la recursión. Ffuf encontrará nuevos directorios y comenzará a fuzzearlos.")
-        ffuf_options_layout.addWidget(self.recursion_check)
-
-        # Recursion Depth
-        recursion_depth_label = QLabel("-recursion-depth:")
-        self.recursion_depth_spin = QSpinBox()
-        self.recursion_depth_spin.setRange(1, 10)
-        self.recursion_depth_spin.setValue(2)
-        self.recursion_depth_spin.setToolTip("Profundidad máxima de recursión.")
-        ffuf_options_layout.addWidget(recursion_depth_label)
-        ffuf_options_layout.addWidget(self.recursion_depth_spin)
-
-        ffuf_options_group.setLayout(ffuf_options_layout)
-        ffuf_settings_layout.addWidget(ffuf_options_group)
-
-        # Wordlist Downloader
-        self.download_wordlist_button = QPushButton("Descargar Wordlists (SecLists)")
-        self.download_wordlist_button.setToolTip("Descarga la colección de wordlists de SecLists (~400MB).")
-        self.download_wordlist_button.clicked.connect(self.start_wordlist_download)
-        ffuf_settings_layout.addWidget(self.download_wordlist_button)
-
-        ffuf_settings_group.setLayout(ffuf_settings_layout)
-        brute_layout.addWidget(ffuf_settings_group)
-
 
         # URLs encontradas
         urls_group = QGroupBox("URLs Encontradas")
@@ -325,6 +247,11 @@ class MainWindow(QMainWindow):
         button_layout.addWidget(self.brute_stop_button)
         button_layout.addWidget(self.brute_save_button)
         brute_layout.addLayout(button_layout)
+
+        self.download_wordlist_button = QPushButton("Descargar Wordlists (SecLists)")
+        self.download_wordlist_button.setToolTip("Descarga la colección de wordlists de SecLists (~400MB).")
+        self.download_wordlist_button.clicked.connect(self.start_wordlist_download)
+        brute_layout.addWidget(self.download_wordlist_button)
 
         self.tabs.addTab(brute_tab, "Fuerza Bruta")
 
@@ -481,8 +408,7 @@ class MainWindow(QMainWindow):
             url,
             self.depth_frame.get_depth(),
             self.delay_spin.value(),
-            extensions,
-            self.crawler_threads_spin.value()
+            extensions
         )
         self.crawler_thread.progress.connect(self.update_progress)
         self.crawler_thread.finished.connect(self.crawling_finished)
@@ -497,6 +423,10 @@ class MainWindow(QMainWindow):
 
     def update_progress(self, message):
         self.progress_text.append(message)
+
+    def force_repaint(self):
+        """Force the window to repaint to fix rendering glitches."""
+        self.repaint()
 
     def crawling_finished(self, results):
         self.results = results
@@ -530,28 +460,15 @@ class MainWindow(QMainWindow):
 
     # Brute force methods
     def start_brute_force(self):
-        fuzz_template = self.brute_url_input.text().strip()
+        url = self.brute_url_input.text().strip()
         dictionary = self.dict_path_input.text().strip()
 
-        if not fuzz_template or not dictionary:
+        if not url or not dictionary:
             self.brute_progress_text.append("Por favor, complete todos los campos")
             return
 
-        if "FUZZ" not in fuzz_template:
-            self.brute_progress_text.append("El objetivo de fuzzing debe contener la palabra clave 'FUZZ'")
-            return
-
-        # Collect options from the UI
-        status_codes = [int(code) for code, box in self.status_code_boxes.items() if box.isChecked()]
-
-        options = {
-            'fuzz_template': fuzz_template,
-            'dictionary': dictionary,
-            'threads': self.brute_threads_spin.value(),
-            'status_codes': status_codes,
-            'recursion': self.recursion_check.isChecked(),
-            'recursion_depth': self.recursion_depth_spin.value() if self.recursion_check.isChecked() else None,
-        }
+        if not url.startswith(('http://', 'https://')):
+            url = 'https://' + url
 
         self.brute_progress_text.clear()
         self.urls_list.clear()
@@ -560,7 +477,7 @@ class MainWindow(QMainWindow):
         self.brute_stop_button.setEnabled(True)
         self.brute_save_button.setEnabled(False)
 
-        self.brute_force_thread = BruteForceThread(options)
+        self.brute_force_thread = BruteForceThread(url, dictionary)
         self.brute_force_thread.progress.connect(self.update_brute_progress)
         self.brute_force_thread.url_found.connect(self.add_found_url)
         self.brute_force_thread.status.connect(self.update_brute_status)

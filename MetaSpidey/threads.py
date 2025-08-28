@@ -1,130 +1,107 @@
 from PyQt6.QtCore import QThread, pyqtSignal
-from urllib.parse import urljoin
+from crawlers import Crawler, BruteForcer, FileDownloader
+from urllib.parse import urljoin  # Añadida esta importación
 import time
-import queue
-import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import json
-import os
-import zipfile
-import requests
-
-from crawlers import Crawler, FfufRunner, FileDownloader
 
 class CrawlerThread(QThread):
     progress = pyqtSignal(str)
+    url_found = pyqtSignal(str, int)
     finished = pyqtSignal(list)
 
-    def __init__(self, url, max_depth, delay, extensions, threads):
+    def __init__(self, url, max_depth, delay, extensions):
         super().__init__()
-        self.initial_url = url
+        self.url = url
         self.max_depth = max_depth
         self.delay = delay
         self.extensions = extensions
-        self.threads = threads
         self.crawler = Crawler()
-        self.visited_urls = set()
-        self.lock = threading.Lock()
+
+    def crawl(self, url, depth=0):
+        if (url in self.crawler.visited_urls or
+                depth >= self.max_depth or
+                self.crawler.should_stop):
+            return
+
+        self.progress.emit(f"Nivel {depth + 1}: Rastreando {url}")
+        self.url_found.emit(url, depth)
+        self.crawler.visited_urls.add(url)
+
+        links = self.crawler.get_links(url, self.extensions)
+        time.sleep(self.delay)
+
+        for link in links:
+            self.crawl(link, depth + 1)
 
     def run(self):
-        urls_to_crawl = queue.Queue()
-        urls_to_crawl.put((self.initial_url, 0))
-        self.visited_urls.add(self.initial_url)
-
-        with ThreadPoolExecutor(max_workers=self.threads) as executor:
-            futures = {}
-            while not urls_to_crawl.empty() or futures:
-                while not urls_to_crawl.empty():
-                    url, depth = urls_to_crawl.get()
-                    if depth < self.max_depth and not self.crawler.should_stop:
-                        future = executor.submit(self.crawler.get_links, url, self.extensions)
-                        futures[future] = (url, depth)
-
-                for future in as_completed(list(futures)):
-                    url, depth = futures.pop(future)
-                    try:
-                        links = future.result()
-                        self.progress.emit(f"Crawled: {url} | Found {len(links)} links")
-                        for link in links:
-                            with self.lock:
-                                if link not in self.visited_urls:
-                                    self.visited_urls.add(link)
-                                    if depth + 1 < self.max_depth:
-                                        urls_to_crawl.put((link, depth + 1))
-                        if self.delay > 0:
-                            time.sleep(self.delay)
-                    except Exception as e:
-                        self.progress.emit(f"Error crawling {url}: {e}")
-
-                    if self.crawler.should_stop:
-                        for f in futures:
-                            f.cancel()
-                        break
-                if self.crawler.should_stop:
-                    break
-
-        self.finished.emit(list(self.visited_urls))
+        try:
+            self.crawl(self.url)
+            self.finished.emit(list(self.crawler.visited_urls))
+        except Exception as e:
+            self.progress.emit(f"Error: {str(e)}")
+            self.finished.emit([])
 
     def stop(self):
         self.crawler.should_stop = True
 
 class BruteForceThread(QThread):
     progress = pyqtSignal(str)
-    url_found = pyqtSignal(str)
-    status = pyqtSignal(str)
+    url_found = pyqtSignal(str)  # Señal para cada URL encontrada
+    status = pyqtSignal(str)     # Señal para actualizaciones de estado
     finished = pyqtSignal(list)
 
-    def __init__(self, options):
+    def __init__(self, url, dictionary_file):
         super().__init__()
-        self.ffuf_runner = FfufRunner(options)
-        self.total_lines = 0
+        self.brute_forcer = BruteForcer(url, dictionary_file)
+        self.total_lines = self.count_dictionary_lines(dictionary_file)
+        self.processed_lines = 0
+
+    def count_dictionary_lines(self, dictionary_file):
+        """Contar el número total de líneas en el diccionario"""
         try:
-            with open(options['dictionary'], 'r', encoding='utf-8', errors='ignore') as f:
-                self.total_lines = sum(1 for _ in f)
-        except Exception as e:
-            self.progress.emit(f"Error al contar líneas del diccionario: {e}")
+            with open(dictionary_file, 'r') as f:
+                return sum(1 for line in f)
+        except Exception:
+            return 0
 
     def stop(self):
-        self.progress.emit("Deteniendo el proceso de ffuf...")
-        self.ffuf_runner.stop()
+        """Detener el proceso de fuerza bruta"""
+        if self.brute_forcer:
+            self.brute_forcer.should_stop = True
+        self.progress.emit("Deteniendo el proceso de fuerza bruta...")
 
     def run(self):
         try:
-            process = self.ffuf_runner.run()
             discovered_urls = []
-            processed_count = 0
+            with open(self.brute_forcer.dictionary_file, 'r') as f:
+                for line in f:
+                    if self.brute_forcer.should_stop:
+                        break
 
-            for line in iter(process.stdout.readline, ''):
-                try:
-                    result = json.loads(line)
-                    if 'url' in result and 'status' in result:
-                        url = result['url']
-                        status = result['status']
-                        discovered_urls.append(url)
-                        self.url_found.emit(f"[+] {url} (Status: {status})")
+                    self.processed_lines += 1
+                    path = line.strip()
+                    if not path:
+                        continue
 
-                    processed_count += 1
-                    if self.total_lines > 0:
-                        progress_percent = (processed_count / self.total_lines) * 100
-                        self.status.emit(f"Progreso: {progress_percent:.1f}% ({processed_count}/{self.total_lines})")
+                    url = urljoin(self.brute_forcer.base_url, path)
+                    try:
+                        # Emitir el progreso actual
+                        progress_percent = (self.processed_lines / self.total_lines) * 100
+                        self.status.emit(f"Progreso: {progress_percent:.1f}% ({self.processed_lines}/{self.total_lines})")
 
-                except json.JSONDecodeError:
-                    self.progress.emit(line.strip())
+                        response = self.brute_forcer.session.head(url, allow_redirects=True, timeout=5)
+                        if response.status_code == 200:
+                            discovered_urls.append(url)
+                            # Emitir la URL encontrada
+                            self.url_found.emit(f"[+] URL encontrada: {url} (Código: {response.status_code})")
+                    except Exception as e:
+                        self.progress.emit(f"Error al probar {url}: {str(e)}")
 
-            process.stdout.close()
-            return_code = process.wait()
-            if return_code != 0:
-                stderr_output = process.stderr.read()
-                self.progress.emit(f"ffuf terminó con error (código {return_code}):")
-                self.progress.emit(stderr_output)
+                    time.sleep(0.1)  # Ser amable con el servidor
 
             self.finished.emit(discovered_urls)
 
-        except FileNotFoundError:
-            self.progress.emit("Error: 'ffuf' no encontrado. Asegúrese de que esté instalado y en su PATH o en el directorio del proyecto.")
-            self.finished.emit([])
         except Exception as e:
-            self.progress.emit(f"Error al ejecutar ffuf: {str(e)}")
+            self.progress.emit(f"Error en fuerza bruta: {str(e)}")
             self.finished.emit([])
 
 class DownloadThread(QThread):
@@ -153,6 +130,11 @@ class DownloadThread(QThread):
     def stop(self):
         self.downloader.should_stop = True
 
+import os
+import zipfile
+import requests
+import shutil
+
 class DownloadWordlistThread(QThread):
     progress = pyqtSignal(str)
     finished = pyqtSignal()
@@ -162,9 +144,15 @@ class DownloadWordlistThread(QThread):
         self.seclists_url = "https://github.com/danielmiessler/SecLists/archive/master.zip"
         self.output_dir = "wordlists"
         self.zip_path = os.path.join(self.output_dir, "seclists.zip")
+        self.final_path = os.path.join(self.output_dir, "seclists")
 
     def run(self):
         try:
+            if os.path.exists(self.final_path):
+                self.progress.emit("SecLists ya parece estar instalado.")
+                self.finished.emit()
+                return
+
             self.progress.emit("Creando directorio de wordlists...")
             os.makedirs(self.output_dir, exist_ok=True)
 
@@ -186,14 +174,25 @@ class DownloadWordlistThread(QThread):
 
             self.progress.emit("Descarga completa. Extrayendo archivos...")
             with zipfile.ZipFile(self.zip_path, 'r') as zip_ref:
-                zip_ref.extractall(self.output_dir)
+                temp_extract_dir = os.path.join(self.output_dir, "_temp_extract")
+                zip_ref.extractall(temp_extract_dir)
+
+            extracted_folder = os.path.join(temp_extract_dir, os.listdir(temp_extract_dir)[0])
+
+            self.progress.emit("Organizando archivos...")
+            shutil.move(extracted_folder, self.final_path)
 
             self.progress.emit("Extracción completa. Limpiando...")
+            shutil.rmtree(temp_extract_dir)
             os.remove(self.zip_path)
 
-            self.progress.emit("SecLists ha sido instalado en el directorio 'wordlists'.")
+            self.progress.emit(f"SecLists ha sido instalado en: {self.final_path}")
             self.finished.emit()
 
         except Exception as e:
             self.progress.emit(f"Error al descargar SecLists: {str(e)}")
+            if os.path.exists(self.zip_path):
+                os.remove(self.zip_path)
+            if 'temp_extract_dir' in locals() and os.path.exists(temp_extract_dir):
+                shutil.rmtree(temp_extract_dir)
             self.finished.emit()
