@@ -1,0 +1,11 @@
+requests
+beautifulsoup4
+pillow
+python-magic
+python-docx
+PyPDF2
+PyQt6
+urllib3
+tqdm
+colorama
+pyinstaller
