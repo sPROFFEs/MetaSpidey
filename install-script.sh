@@ -75,6 +75,31 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Install ffuf
+print_status "Installing ffuf..."
+if [ ! -f "ffuf" ]; then
+    FFUF_URL="https://github.com/ffuf/ffuf/releases/download/v2.1.0/ffuf_2.1.0_linux_amd64.tar.gz"
+    wget -q --show-progress -O ffuf.tar.gz "$FFUF_URL"
+    if [ $? -eq 0 ]; then
+        tar -xzf ffuf.tar.gz ffuf
+        if [ $? -eq 0 ]; then
+            chmod +x ffuf
+            print_status "ffuf installed successfully"
+            rm ffuf.tar.gz
+        else
+            print_error "Failed to extract ffuf"
+            rm ffuf.tar.gz
+            exit 1
+        fi
+    else
+        print_error "Failed to download ffuf"
+        exit 1
+    fi
+else
+    print_status "ffuf already installed"
+fi
+
+
 # Create and activate virtual environment
 print_status "Setting up Python virtual environment..."
 python3 -m venv venv

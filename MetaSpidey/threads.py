@@ -67,55 +67,74 @@ class CrawlerThread(QThread):
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import json
+from crawlers import Crawler, FfufRunner, FileDownloader
+
 class BruteForceThread(QThread):
     progress = pyqtSignal(str)
     url_found = pyqtSignal(str)
     status = pyqtSignal(str)
     finished = pyqtSignal(list)
 
-    def __init__(self, fuzz_template, dictionary_file, threads, status_codes):
+    def __init__(self, options):
         super().__init__()
-        self.brute_forcer = BruteForcer(fuzz_template, dictionary_file, threads, status_codes)
+        self.ffuf_runner = FfufRunner(options)
         self.total_lines = 0
         try:
-            with open(dictionary_file, 'r') as f:
-                self.wordlist = [line.strip() for line in f if line.strip()]
-            self.total_lines = len(self.wordlist)
+            with open(options['dictionary'], 'r') as f:
+                self.total_lines = sum(1 for _ in f)
         except Exception as e:
-            self.progress.emit(f"Error al leer el diccionario: {e}")
-            self.wordlist = []
+            self.progress.emit(f"Error al contar líneas del diccionario: {e}")
 
     def stop(self):
-        self.brute_forcer.stop()
-        self.progress.emit("Deteniendo el proceso de fuerza bruta...")
+        self.progress.emit("Deteniendo el proceso de ffuf...")
+        self.ffuf_runner.stop()
 
     def run(self):
-        if not self.wordlist:
+        try:
+            process = self.ffuf_runner.run()
+            discovered_urls = []
+            processed_count = 0
+
+            # Read ffuf's stdout line by line
+            for line in iter(process.stdout.readline, ''):
+                try:
+                    result = json.loads(line)
+
+                    # ffuf outputs results as JSON objects
+                    if 'url' in result and 'status' in result:
+                        url = result['url']
+                        status = result['status']
+                        discovered_urls.append(url)
+                        self.url_found.emit(f"[+] {url} (Status: {status})")
+
+                    processed_count += 1
+                    if self.total_lines > 0:
+                        progress_percent = (processed_count / self.total_lines) * 100
+                        self.status.emit(f"Progreso: {progress_percent:.1f}% ({processed_count}/{self.total_lines})")
+
+                except json.JSONDecodeError:
+                    # Ignore lines that are not valid JSON (e.g., ffuf's header/footer)
+                    self.progress.emit(line.strip())
+
+            process.stdout.close()
+            return_code = process.wait()
+            if return_code != 0:
+                stderr_output = process.stderr.read()
+                self.progress.emit(f"ffuf terminó con error (código {return_code}):")
+                self.progress.emit(stderr_output)
+
+            self.finished.emit(discovered_urls)
+
+        except FileNotFoundError:
+            self.progress.emit("Error: 'ffuf' no encontrado. Asegúrese de que esté instalado y en su PATH o en el directorio del proyecto.")
             self.finished.emit([])
-            return
+        except Exception as e:
+            self.progress.emit(f"Error al ejecutar ffuf: {str(e)}")
+            self.finished.emit([])
 
-        discovered_urls = []
-        processed_count = 0
-
-        with ThreadPoolExecutor(max_workers=self.brute_forcer.threads) as executor:
-            futures = {executor.submit(self.brute_forcer.check_path, path): path for path in self.wordlist}
-
-            for future in as_completed(futures):
-                if self.brute_forcer.should_stop:
-                    break
-
-                result = future.result()
-                processed_count += 1
-
-                if result:
-                    url, status_code = result
-                    discovered_urls.append(url)
-                    self.url_found.emit(f"[+] URL encontrada: {url} (Código: {status_code})")
-
-                progress_percent = (processed_count / self.total_lines) * 100
-                self.status.emit(f"Progreso: {progress_percent:.1f}% ({processed_count}/{self.total_lines})")
-
-        self.finished.emit(discovered_urls)
+import zipfile
+import requests
 
 class DownloadThread(QThread):
     progress = pyqtSignal(str)
@@ -142,3 +161,48 @@ class DownloadThread(QThread):
 
     def stop(self):
         self.downloader.should_stop = True
+
+class DownloadWordlistThread(QThread):
+    progress = pyqtSignal(str)
+    finished = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+        self.seclists_url = "https://github.com/danielmiessler/SecLists/archive/master.zip"
+        self.output_dir = "wordlists"
+        self.zip_path = os.path.join(self.output_dir, "seclists.zip")
+
+    def run(self):
+        try:
+            self.progress.emit("Creando directorio de wordlists...")
+            os.makedirs(self.output_dir, exist_ok=True)
+
+            self.progress.emit(f"Descargando SecLists desde {self.seclists_url}...")
+            response = requests.get(self.seclists_url, stream=True)
+            response.raise_for_status()
+
+            total_size = int(response.headers.get('content-length', 0))
+            downloaded_size = 0
+
+            with open(self.zip_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+                        if total_size > 0:
+                            percent = (downloaded_size / total_size) * 100
+                            self.progress.emit(f"Descargando... {percent:.1f}%")
+
+            self.progress.emit("Descarga completa. Extrayendo archivos...")
+            with zipfile.ZipFile(self.zip_path, 'r') as zip_ref:
+                zip_ref.extractall(self.output_dir)
+
+            self.progress.emit("Extracción completa. Limpiando...")
+            os.remove(self.zip_path)
+
+            self.progress.emit("SecLists ha sido instalado en el directorio 'wordlists'.")
+            self.finished.emit()
+
+        except Exception as e:
+            self.progress.emit(f"Error al descargar SecLists: {str(e)}")
+            self.finished.emit()

@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import (
     QTabWidget, QFrame, QGroupBox  
 )
 from PyQt6.QtCore import Qt
-from threads import CrawlerThread, BruteForceThread, DownloadThread
+from threads import CrawlerThread, BruteForceThread, DownloadThread, DownloadWordlistThread
 from metadata import MetadataExtractor
 
 class DepthFrame(QFrame):
@@ -203,26 +203,76 @@ class MainWindow(QMainWindow):
         dict_layout.addWidget(dict_button)
         brute_layout.addLayout(dict_layout)
 
-        # Brute force settings
-        brute_settings_layout = QHBoxLayout()
+        # --- FFUF Settings Group ---
+        ffuf_settings_group = QGroupBox("Configuración de FFUF")
+        ffuf_settings_layout = QVBoxLayout()
+
+        # Threads and Status Codes
+        top_settings_layout = QHBoxLayout()
 
         # Threads
         threads_label = QLabel("Hilos:")
         self.brute_threads_spin = QSpinBox()
-        self.brute_threads_spin.setRange(1, 100)
-        self.brute_threads_spin.setValue(10)
-        brute_settings_layout.addWidget(threads_label)
-        brute_settings_layout.addWidget(self.brute_threads_spin)
+        self.brute_threads_spin.setRange(1, 200)
+        self.brute_threads_spin.setValue(40)
+        top_settings_layout.addWidget(threads_label)
+        top_settings_layout.addWidget(self.brute_threads_spin)
 
-        # Status codes
-        status_label = QLabel("Códigos de estado:")
-        self.brute_status_input = QLineEdit()
-        self.brute_status_input.setPlaceholderText("Ej: 200,204,301,302,307,403")
-        self.brute_status_input.setText("200,204,301,302,307,403")
-        brute_settings_layout.addWidget(status_label)
-        brute_settings_layout.addWidget(self.brute_status_input)
+        # Status Codes Checkboxes
+        self.status_codes_group = QGroupBox("Códigos de Estado (-mc)")
+        status_codes_layout = QHBoxLayout()
+        self.status_code_boxes = {
+            '200': QCheckBox("200"),
+            '204': QCheckBox("204"),
+            '301': QCheckBox("301"),
+            '302': QCheckBox("302"),
+            '307': QCheckBox("307"),
+            '401': QCheckBox("401"),
+            '403': QCheckBox("403"),
+            '500': QCheckBox("500"),
+        }
+        # Set default checks
+        self.status_code_boxes['200'].setChecked(True)
+        self.status_code_boxes['204'].setChecked(True)
+        self.status_code_boxes['301'].setChecked(True)
+        self.status_code_boxes['302'].setChecked(True)
+        self.status_code_boxes['307'].setChecked(True)
 
-        brute_layout.addLayout(brute_settings_layout)
+        for code, box in self.status_code_boxes.items():
+            status_codes_layout.addWidget(box)
+        self.status_codes_group.setLayout(status_codes_layout)
+        top_settings_layout.addWidget(self.status_codes_group)
+        ffuf_settings_layout.addLayout(top_settings_layout)
+
+        # Other FFUF Options
+        ffuf_options_group = QGroupBox("Otras Opciones de FFUF")
+        ffuf_options_layout = QHBoxLayout()
+
+        # Recursion
+        self.recursion_check = QCheckBox("-recursion")
+        self.recursion_check.setToolTip("Activa la recursión. Ffuf encontrará nuevos directorios y comenzará a fuzzearlos.")
+        ffuf_options_layout.addWidget(self.recursion_check)
+
+        # Recursion Depth
+        recursion_depth_label = QLabel("-recursion-depth:")
+        self.recursion_depth_spin = QSpinBox()
+        self.recursion_depth_spin.setRange(1, 10)
+        self.recursion_depth_spin.setValue(2)
+        self.recursion_depth_spin.setToolTip("Profundidad máxima de recursión.")
+        ffuf_options_layout.addWidget(recursion_depth_label)
+        ffuf_options_layout.addWidget(self.recursion_depth_spin)
+
+        ffuf_options_group.setLayout(ffuf_options_layout)
+        ffuf_settings_layout.addWidget(ffuf_options_group)
+
+        # Wordlist Downloader
+        self.download_wordlist_button = QPushButton("Descargar Wordlists (SecLists)")
+        self.download_wordlist_button.setToolTip("Descarga la colección de wordlists de SecLists (~400MB).")
+        self.download_wordlist_button.clicked.connect(self.start_wordlist_download)
+        ffuf_settings_layout.addWidget(self.download_wordlist_button)
+
+        ffuf_settings_group.setLayout(ffuf_settings_layout)
+        brute_layout.addWidget(ffuf_settings_group)
 
 
         # URLs encontradas
@@ -482,8 +532,6 @@ class MainWindow(QMainWindow):
     def start_brute_force(self):
         fuzz_template = self.brute_url_input.text().strip()
         dictionary = self.dict_path_input.text().strip()
-        threads = self.brute_threads_spin.value()
-        status_codes_str = self.brute_status_input.text().strip()
 
         if not fuzz_template or not dictionary:
             self.brute_progress_text.append("Por favor, complete todos los campos")
@@ -493,11 +541,17 @@ class MainWindow(QMainWindow):
             self.brute_progress_text.append("El objetivo de fuzzing debe contener la palabra clave 'FUZZ'")
             return
 
-        try:
-            status_codes = [int(code.strip()) for code in status_codes_str.split(',') if code.strip()]
-        except ValueError:
-            self.brute_progress_text.append("Códigos de estado inválidos. Use números separados por comas.")
-            return
+        # Collect options from the UI
+        status_codes = [int(code) for code, box in self.status_code_boxes.items() if box.isChecked()]
+
+        options = {
+            'fuzz_template': fuzz_template,
+            'dictionary': dictionary,
+            'threads': self.brute_threads_spin.value(),
+            'status_codes': status_codes,
+            'recursion': self.recursion_check.isChecked(),
+            'recursion_depth': self.recursion_depth_spin.value() if self.recursion_check.isChecked() else None,
+        }
 
         self.brute_progress_text.clear()
         self.urls_list.clear()
@@ -506,7 +560,7 @@ class MainWindow(QMainWindow):
         self.brute_stop_button.setEnabled(True)
         self.brute_save_button.setEnabled(False)
 
-        self.brute_force_thread = BruteForceThread(fuzz_template, dictionary, threads, status_codes)
+        self.brute_force_thread = BruteForceThread(options)
         self.brute_force_thread.progress.connect(self.update_brute_progress)
         self.brute_force_thread.url_found.connect(self.add_found_url)
         self.brute_force_thread.status.connect(self.update_brute_status)
@@ -574,6 +628,18 @@ class MainWindow(QMainWindow):
                 self.brute_progress_text.append(f"Resultados guardados en {file_name}")
             except Exception as e:
                 self.brute_progress_text.append(f"Error al guardar resultados: {str(e)}")
+
+    def start_wordlist_download(self):
+        self.download_wordlist_button.setEnabled(False)
+        self.brute_progress_text.append("Iniciando descarga de SecLists...")
+        self.wordlist_download_thread = DownloadWordlistThread()
+        self.wordlist_download_thread.progress.connect(self.update_brute_progress)
+        self.wordlist_download_thread.finished.connect(self.wordlist_download_finished)
+        self.wordlist_download_thread.start()
+
+    def wordlist_download_finished(self):
+        self.download_wordlist_button.setEnabled(True)
+        self.brute_progress_text.append("Proceso de descarga de wordlist finalizado.")
 
     # Download methods
     def start_download(self):
