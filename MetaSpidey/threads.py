@@ -1,11 +1,15 @@
 from PyQt6.QtCore import QThread, pyqtSignal
-from crawlers import Crawler, BruteForcer, FileDownloader
-from urllib.parse import urljoin  # Añadida esta importación
+from urllib.parse import urljoin
 import time
-
 import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import json
+import os
+import zipfile
+import requests
+
+from crawlers import Crawler, FfufRunner, FileDownloader
 
 class CrawlerThread(QThread):
     progress = pyqtSignal(str)
@@ -53,7 +57,6 @@ class CrawlerThread(QThread):
                         self.progress.emit(f"Error crawling {url}: {e}")
 
                     if self.crawler.should_stop:
-                        # Cancel remaining futures
                         for f in futures:
                             f.cancel()
                         break
@@ -64,11 +67,6 @@ class CrawlerThread(QThread):
 
     def stop(self):
         self.crawler.should_stop = True
-
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
-import json
-from crawlers import Crawler, FfufRunner, FileDownloader
 
 class BruteForceThread(QThread):
     progress = pyqtSignal(str)
@@ -81,7 +79,7 @@ class BruteForceThread(QThread):
         self.ffuf_runner = FfufRunner(options)
         self.total_lines = 0
         try:
-            with open(options['dictionary'], 'r') as f:
+            with open(options['dictionary'], 'r', encoding='utf-8', errors='ignore') as f:
                 self.total_lines = sum(1 for _ in f)
         except Exception as e:
             self.progress.emit(f"Error al contar líneas del diccionario: {e}")
@@ -96,12 +94,9 @@ class BruteForceThread(QThread):
             discovered_urls = []
             processed_count = 0
 
-            # Read ffuf's stdout line by line
             for line in iter(process.stdout.readline, ''):
                 try:
                     result = json.loads(line)
-
-                    # ffuf outputs results as JSON objects
                     if 'url' in result and 'status' in result:
                         url = result['url']
                         status = result['status']
@@ -114,7 +109,6 @@ class BruteForceThread(QThread):
                         self.status.emit(f"Progreso: {progress_percent:.1f}% ({processed_count}/{self.total_lines})")
 
                 except json.JSONDecodeError:
-                    # Ignore lines that are not valid JSON (e.g., ffuf's header/footer)
                     self.progress.emit(line.strip())
 
             process.stdout.close()
@@ -132,9 +126,6 @@ class BruteForceThread(QThread):
         except Exception as e:
             self.progress.emit(f"Error al ejecutar ffuf: {str(e)}")
             self.finished.emit([])
-
-import zipfile
-import requests
 
 class DownloadThread(QThread):
     progress = pyqtSignal(str)
